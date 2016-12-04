@@ -44,9 +44,11 @@ public class webcam_videochat{
 	static JPanel sessionpanel = null;
 	static Webcam webcam = Webcam.getDefault();
 	static int frame_count = 1;
-	static DatagramSocket socket = null;
+	static DatagramSocket recvsocket = null;
+	static DatagramSocket sendsocket = null;
 	static byte[] buf = new byte[100000];
 	static String opponentIp = null;
+	static int opponentPort = 0;
 	static InetSocketAddress sockaddr = null;
 
 	public static void main (String args[]) throws IOException {
@@ -61,13 +63,14 @@ public class webcam_videochat{
 		JLabel titleImage = new JLabel();
 		JButton createbtn = new JButton("部屋を作る");
 		JButton joinbtn = new JButton("部屋に入る");
+		JPanel sss = new JPanel();
 
 		titleImage.setIcon(new ImageIcon("title.png"));
 		//Jpanel 
 
-		myportfield = new JTextField("Port",5);
-		ipfield = new JTextField("IP address",10);
-		portfield = new JTextField("Port",5);
+		myportfield = new JTextField("12345",5);
+		ipfield = new JTextField("172.16.127.160",10);
+		portfield = new JTextField("12345",5);
 
 		statuslabel = new JLabel("Waiting for commands...");
 		
@@ -88,8 +91,26 @@ public class webcam_videochat{
 
 		mainwindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainwindow.pack() ;
+		//sss.add(new WebcamPanel(webcam));
 		mainwindow.setVisible(true) ;
 		
+
+	}
+
+	public static void makeSocket(String mode){
+		try{
+			if(mode.equals("join")){
+				sendsocket = new DatagramSocket(12367); //Port: using port in send the packet
+				recvsocket = new DatagramSocket(12349); 
+
+			}else if(mode.equals("create")){
+				sendsocket = new DatagramSocket(12367);
+				recvsocket = new DatagramSocket(Integer.parseInt(myportfield.getText()));
+			}
+			
+			
+		}catch(SocketException e){
+	}
 
 	}
 
@@ -99,15 +120,18 @@ public class webcam_videochat{
 		sessionframe.setSize(640,960);
 
 		try{
+			String mkctn = "aaa";
+		//	sendsocket = new DatagramSocket(Integer.parseInt(portfield.getText()));
+			sockaddr = new InetSocketAddress(ipfield.getText(), Integer.parseInt("12345")); //Port: sendtoOpponent port/address
 
-			socket = new DatagramSocket(Integer.parseInt(portfield.getText()));
-			sockaddr = new InetSocketAddress(ipfield.getText(), Integer.parseInt(portfield.getText()));
+			byte[] buf = mkctn.getBytes("UTF-8");
 
 			DatagramPacket packet = new DatagramPacket(buf,buf.length,sockaddr);
-			socket.send(packet);
+			System.out.println("aaaaaaa");
+			sendsocket.send(packet);
 
 		}catch(Exception e){
-			System.out.println("Socket Exception");
+			System.out.println("sndCnc Socket Exception");
 			statuslabel.setText("Socket Exception");
 		}
 	}
@@ -115,26 +139,28 @@ public class webcam_videochat{
 
 	static void ReceiveConnection(){
 
-		System.out.println("aaaa");
-
 		sessionframe = new JFrame("SessionFrame: Waiting for the client...");
-		
 		sessionframe.setSize(640,960);
 		try{
 
-			socket = new DatagramSocket(Integer.parseInt(myportfield.getText()));
+			// socket = new DatagramSocket(Integer.parseInt(myportfield.getText()));	
 			DatagramPacket packet = new DatagramPacket(buf,buf.length);
+			System.out.println("packet");
 
-			socket.receive(packet);
+			recvsocket.receive(packet);
 			opponentIp = packet.getAddress().toString();
-			sessionframe.setTitle("SessionFrame: "+opponentIp.substring(1) + packet.getPort());
+			System.out.println("opponent IP: "+opponentIp );
+			opponentPort = packet.getPort();
+			System.out.println("opponentPort= "+opponentPort);
+			sockaddr = new InetSocketAddress(opponentIp.substring(1),12349);
+			sessionframe.setTitle("SessionFrame: "+opponentIp.substring(1) +": "+ packet.getPort());
 
 			ipfield.setText(opponentIp.substring(1));
 			portfield.setText(myportfield.getText());
 
 
 		}catch(Exception e){
-			System.out.println("Socket Exception");
+			System.out.println("rcvSnc Socket Exception");
 			statuslabel.setText("Socket Exception");
 		}
 	}
@@ -144,22 +170,26 @@ public class webcam_videochat{
 	public static class joinbtnListener implements ActionListener{
 
 		public void actionPerformed(ActionEvent ae){
+
+			makeSocket("join");
 			SendConnection();
-			
 			SendThread st = new SendThread();
 			st.start();		
 			ReceiveThread rt = new ReceiveThread();
+			System.out.println("receive st");
 			rt.start();	
-		}
-
-		
+		}		
 	}
+
 
 	public static class createbtnListener implements ActionListener{
 
 		public void actionPerformed(ActionEvent ae){
+
+				makeSocket("create");
 				ReceiveConnection();
 				ReceiveThread rt = new ReceiveThread();
+				System.out.println("receive st");
 				rt.start();	
 				SendThread st = new SendThread();
 				st.start();
@@ -176,6 +206,11 @@ public class webcam_videochat{
 
 				sessionframe.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 				sessionpanel.add(new WebcamPanel(webcam) );
+				try{
+				Thread.sleep(5000);
+			}catch(InterruptedException e){
+
+			}
 				sessionpanel.add(label);
 				sessionframe.add(sessionpanel);
 				sessionframe.setVisible(true);
@@ -188,7 +223,7 @@ public class webcam_videochat{
 
 					for(;;){
 
-						socket.receive(packet);
+						recvsocket.receive(packet);
 						//System.out.println("aaaaaaaaaaaa  "+ packet.getSocketAddress());
 						ByteArrayInputStream bais = new ByteArrayInputStream(buf);
 						BufferedImage img = ImageIO.read(bais);		
@@ -200,7 +235,7 @@ public class webcam_videochat{
 					System.out.println("Socket error");
 					statuslabel.setText("Socket error");
 				}finally{
-					socket.close();
+					recvsocket.close();
 				}
 
 
@@ -213,7 +248,7 @@ public class webcam_videochat{
 	public static class SendThread extends Thread{
 
 	//	static DatagramSocket socket = new DatagramSocket(Integer.parseInt(portfield.getText()));
-		static InetSocketAddress sockaddr = new InetSocketAddress(ipfield.getText(), Integer.parseInt(portfield.getText()));
+		// static InetSocketAddress sockaddr = new InetSocketAddress(opponentIp,opponentPort);
 
 		public void run(){
 				
@@ -234,18 +269,22 @@ public class webcam_videochat{
 					//	System.out.println("length: == " + buf.length );
 
 						DatagramPacket packet = new DatagramPacket(buf, buf.length, sockaddr);
-						socket.send(packet);
+						sendsocket.send(packet);
 						
 						}
 					}catch(IOException e){
 						System.out.println("Input or Output error");
 						statuslabel.setText("Input/Output error");
 					}finally{
-						socket.close();
+						sendsocket.close();
 					}
 
 
 		 }
 		}
+
+
+
+			
 }
 
