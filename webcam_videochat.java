@@ -34,64 +34,62 @@ import java.io.ByteArrayOutputStream;
 public class webcam_videochat{
 
 
-	static JFrame mainwindow = null;
-	static JLabel statuslabel = null;
-	static JTextField myportfield = null;
-	static JTextField ipfield = null;
-	static JTextField portfield = null;
-	static JFrame sessionframe = null;
-	static JPanel sessionpanel = null;
+	static JFrame mainFrame = null;
+	static JLabel statusLabel = null;
+	private JTextField sendPortField = null;
+	private JTextField recvportField = null;
+	private JTextField opponentIpField = null;
+	static JFrame sessionFrame = null;
+	static JPanel sessionPanel = null;
 	static Webcam webcam = Webcam.getDefault();
-	static int frame_count = 1;
-	static DatagramSocket recvsocket = null;
-	static DatagramSocket sendsocket = null;
-	static byte[] buf = new byte[100000];
+	static DatagramSocket recvSocket = null;
+	static DatagramSocket sendSocket = null;
+	static byte[] buf = new byte[100000]; // ImagePacketBuffer
 	static String opponentIp = null;
 	static int opponentPort = 0;
 	static InetSocketAddress sockaddr = null;
 
 	public static void main (String args[]) throws IOException {
 
-		String webcamname = webcam.getName();
+		String webcamName = webcam.getName();
 		webcam.setViewSize(new Dimension (640,480));
 
-		mainwindow = new JFrame("Main Menu");
-		JPanel mainpanel = new JPanel();
-		JPanel statuspanel = new JPanel();
-		JPanel menupanel = new JPanel();
+		mainFrame = new JFrame("Main Menu");
+		JPanel mainPanel = new JPanel();
+		JPanel statusPanel = new JPanel();
+		JPanel menuPanel = new JPanel();
 		JLabel titleImage = new JLabel();
 		JButton createbtn = new JButton("部屋を作る");
 		JButton joinbtn = new JButton("部屋に入る");
-		JPanel sss = new JPanel();
 
 		titleImage.setIcon(new ImageIcon("title.png"));
-		//Jpanel 
 
-		myportfield = new JTextField("12345",5);
-		ipfield = new JTextField("172.16.127.160",10);
-		portfield = new JTextField("12345",5);
+		sendPortField = new JTextField("12345",5);
+		opponentIpField = new JTextField("172.16.127.160",10);
+		recvPortField = new JTextField("12345",5);
 
-		statuslabel = new JLabel("Waiting for commands...");
+		statusLabel = new JLabel("Waiting for commands...");
 		
 		createbtn.addActionListener(new createbtnListener());
 		joinbtn.addActionListener(new joinbtnListener());
 
-		mainpanel.setSize(150, 480);
-		mainpanel.add(myportfield);
-		mainpanel.add(createbtn);
-		mainpanel.add(ipfield);
-		mainpanel.add(portfield);
-		mainpanel.add(joinbtn);
-		statuspanel.add(statuslabel);
-		menupanel.add(mainpanel,BorderLayout.NORTH);
-		menupanel.add(statuspanel,BorderLayout.SOUTH);
-		mainwindow.add(menupanel, BorderLayout.SOUTH);
-		mainwindow.add(titleImage);
+		mainPanel.setSize(150, 480);
+		mainPanel.add(sendPortField);
+		mainPanel.add(opponentIpField);
+		mainPanel.add(recvPortField);
+		mainPanel.add(createbtn);
+		mainPanel.add(joinbtn);
 
-		mainwindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		mainwindow.pack() ;
-		//sss.add(new WebcamPanel(webcam));
-		mainwindow.setVisible(true) ;
+		statusPanel.add(statusLabel);
+
+		menuPanel.add(mainPanel,BorderLayout.NORTH);
+		menuPanel.add(statusPanel,BorderLayout.SOUTH);
+
+		mainFrame.add(menuPanel, BorderLayout.SOUTH);
+		mainFrame.add(titleImage);
+		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		mainFrame.pack() ;
+		mainFrame.setVisible(true) ;
 		
 
 	}
@@ -99,12 +97,12 @@ public class webcam_videochat{
 	public static void makeSocket(String mode){
 		try{
 			if(mode.equals("join")){
-				sendsocket = new DatagramSocket(12367); //Port: using port in send the packet
-				recvsocket = new DatagramSocket(12349); 
+				sendSocket = new DatagramSocket(Integer.parceInt()); //Port: using port in send the packet
+				recvSocket = new DatagramSocket(12349); 
 
 			}else if(mode.equals("create")){
-				sendsocket = new DatagramSocket(12367);
-				recvsocket = new DatagramSocket(Integer.parseInt(myportfield.getText()));
+				sendSocket = new DatagramSocket(12367);
+				recvSocket = new DatagramSocket(Integer.parseInt(myportfield.getText()));
 			}
 			
 			
@@ -115,52 +113,44 @@ public class webcam_videochat{
 
 	static void SendConnection(){
 		
-		sessionframe = new JFrame("SessionFrame: Waiting for the host...");
-		sessionframe.setSize(640,960);
+		sessionFrame = new JFrame("sessionFrame: Waiting for the host...");
+		sessionFrame.setSize(640,960);
 
 		try{
-			String mkctn = "aaa";
-		//	sendsocket = new DatagramSocket(Integer.parseInt(portfield.getText()));
+			String mkctn = "hello";
+
 			sockaddr = new InetSocketAddress(ipfield.getText(), Integer.parseInt("12345")); //Port: sendtoOpponent port/address
 
 			byte[] buf = mkctn.getBytes("UTF-8");
 
 			DatagramPacket packet = new DatagramPacket(buf,buf.length,sockaddr);
-			System.out.println("aaaaaaa");
-			sendsocket.send(packet);
+			sendSocket.send(packet);
 
 		}catch(Exception e){
-			System.out.println("sndCnc Socket Exception");
-			statuslabel.setText("Socket Exception");
+			System.out.println("Socket Exception occurred in SendConnection() ");
+			statusLabel.setText("Socket Exception");
 		}
 	}
 	
 
 	static void ReceiveConnection(){
 
-		sessionframe = new JFrame("SessionFrame: Waiting for the client...");
-		sessionframe.setSize(640,960);
+		sessionFrame = new JFrame("sessionFrame: Waiting for the client...");
+		sessionFrame.setSize(640,960);
 		try{
-
-			// socket = new DatagramSocket(Integer.parseInt(myportfield.getText()));	
+	
 			DatagramPacket packet = new DatagramPacket(buf,buf.length);
-			System.out.println("packet");
 
-			recvsocket.receive(packet);
+			recvSocket.receive(packet);
 			opponentIp = packet.getAddress().toString();
-			System.out.println("opponent IP: "+opponentIp );
 			opponentPort = packet.getPort();
-			System.out.println("opponentPort= "+opponentPort);
+
 			sockaddr = new InetSocketAddress(opponentIp.substring(1),12349);
-			sessionframe.setTitle("SessionFrame: "+opponentIp.substring(1) +": "+ packet.getPort());
-
-			ipfield.setText(opponentIp.substring(1));
-			portfield.setText(myportfield.getText());
-
+			sessionFrame.setTitle("sessionFrame: "+opponentIp.substring(1) +": "+ packet.getPort());
 
 		}catch(Exception e){
 			System.out.println("rcvSnc Socket Exception");
-			statuslabel.setText("Socket Exception");
+			statusLabel.setText("Socket Exception");
 		}
 	}
 
@@ -201,18 +191,18 @@ public class webcam_videochat{
 
 			public void run(){
 				JLabel label = new JLabel();
-				JPanel sessionpanel = new JPanel();
+				JPanel sessionPanel = new JPanel();
 
-				sessionframe.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-				sessionpanel.add(new WebcamPanel(webcam) );
+				sessionFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+				sessionPanel.add(new WebcamPanel(webcam) );
 				try{
 				Thread.sleep(5000);
 			}catch(InterruptedException e){
 
 			}
-				sessionpanel.add(label);
-				sessionframe.add(sessionpanel);
-				sessionframe.setVisible(true);
+				sessionPanel.add(label);
+				sessionFrame.add(sessionPanel);
+				sessionFrame.setVisible(true);
 				
 
 				try{
@@ -222,7 +212,7 @@ public class webcam_videochat{
 
 					for(;;){
 
-						recvsocket.receive(packet);
+						recvSocket.receive(packet);
 						//System.out.println("aaaaaaaaaaaa  "+ packet.getSocketAddress());
 						ByteArrayInputStream bais = new ByteArrayInputStream(buf);
 						BufferedImage img = ImageIO.read(bais);		
@@ -232,9 +222,9 @@ public class webcam_videochat{
 
 				}catch(Exception e){
 					System.out.println("Socket error");
-					statuslabel.setText("Socket error");
+					statusLabel.setText("Socket error");
 				}finally{
-					recvsocket.close();
+					recvSocket.close();
 				}
 
 
@@ -246,17 +236,10 @@ public class webcam_videochat{
 
 	public static class SendThread extends Thread{
 
-	//	static DatagramSocket socket = new DatagramSocket(Integer.parseInt(portfield.getText()));
-		// static InetSocketAddress sockaddr = new InetSocketAddress(opponentIp,opponentPort);
-
 		public void run(){
 				
-			//	JFrame sessionframe = new JFrame("SessionFrame: " + frame_count);
-				frame_count++;
-			//	sessionframe.add(new WebcamPanel(webcam));
-			//	sessionframe.add(label);
-				sessionframe.setVisible(true);
-				sessionframe.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+				sessionFrame.setVisible(true);
+				sessionFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 					try{
 
 						while(true){
@@ -265,17 +248,16 @@ public class webcam_videochat{
 						ImageIO.write(webcam.getImage(), "jpg", baos);
 
 						byte[] buf = baos.toByteArray();
-					//	System.out.println("length: == " + buf.length );
 
 						DatagramPacket packet = new DatagramPacket(buf, buf.length, sockaddr);
-						sendsocket.send(packet);
+						sendSocket.send(packet);
 						
 						}
 					}catch(IOException e){
 						System.out.println("Input or Output error");
-						statuslabel.setText("Input/Output error");
+						statusLabel.setText("Input/Output error");
 					}finally{
-						sendsocket.close();
+						sendSocket.close();
 					}
 
 
