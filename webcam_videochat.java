@@ -5,7 +5,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.util.*;
 import java.text.*;
-import java.applet.*;
 import java.awt.BorderLayout;
 
 import javax.swing.JButton;
